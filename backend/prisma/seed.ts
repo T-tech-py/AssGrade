@@ -4,16 +4,18 @@ import * as argon2 from 'argon2';
 const prisma = new PrismaClient();
 
 const adminSeed = {
-  email: 'admin@gradassess.local',
-  password: 'GradAssessAdmin2026!',
-  firstName: 'Super',
-  lastName: 'Admin',
-  phone: '+2348000000000',
-  school: 'GradAssess Operations',
-  course: 'Platform Administration',
-  level: 'Admin',
-  location: 'Lagos, Nigeria',
-  bio: 'Default seeded administrator account for local development.',
+  email: process.env.SEED_ADMIN_EMAIL?.trim() || 'admin@gradassess.local',
+  password: process.env.SEED_ADMIN_PASSWORD?.trim() || 'GradAssessAdmin2026!',
+  firstName: process.env.SEED_ADMIN_FIRST_NAME?.trim() || 'Super',
+  lastName: process.env.SEED_ADMIN_LAST_NAME?.trim() || 'Admin',
+  phone: process.env.SEED_ADMIN_PHONE?.trim() || '+2348000000000',
+  school: process.env.SEED_ADMIN_SCHOOL?.trim() || 'GradAssess Operations',
+  course: process.env.SEED_ADMIN_COURSE?.trim() || 'Platform Administration',
+  level: process.env.SEED_ADMIN_LEVEL?.trim() || 'Admin',
+  location: process.env.SEED_ADMIN_LOCATION?.trim() || 'Lagos, Nigeria',
+  bio:
+    process.env.SEED_ADMIN_BIO?.trim() ||
+    'Default seeded administrator account for deployment bootstrap and platform operations.',
 };
 
 async function main() {

@@ -13,7 +13,7 @@ services:
     region: frankfurt
     rootDir: .
     buildCommand: npm ci && npm exec prisma generate --workspace backend && npm run build --workspace backend
-    preDeployCommand: npm exec prisma db push --workspace backend
+    preDeployCommand: npm exec prisma db push --workspace backend && npm --workspace backend run prisma:seed
     startCommand: npm --workspace backend run start
     healthCheckPath: /api/health
     envVars:
@@ -43,6 +43,14 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      - key: SEED_ADMIN_EMAIL
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
+      - key: SEED_ADMIN_FIRST_NAME
+        value: Super
+      - key: SEED_ADMIN_LAST_NAME
+        value: Admin
 
   - type: web
     name: assgrade-frontend
