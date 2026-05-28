@@ -1,0 +1,302 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+}
+
+enum AdminRequestStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ExamStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ExamMode {
+  PRACTICE
+  REAL
+}
+
+enum QuestionType {
+  MCQ
+  THEORY
+  CODING
+}
+
+enum AttemptStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  AUTO_GRADED
+  REVIEWED
+  TERMINATED
+}
+
+enum ProctorEventType {
+  TAB_SWITCH
+  FULLSCREEN_EXIT
+  WEBCAM_STATUS
+  IP_CHANGE
+  DEVICE_CHANGE
+  MULTIPLE_FACE_DETECTED
+  NO_FACE_DETECTED
+  SUSPICIOUS_ACTIVITY
+}
+
+enum AIArtifactType {
+  PRACTICE_QUESTIONS
+  STUDY_PLAN
+  CAREER_PATH
+  QUESTION_SUGGESTION
+}
+
+enum ThemePreference {
+  SYSTEM
+  LIGHT
+  DARK
+}
+
+enum DashboardDensity {
+  COMFORTABLE
+  COMPACT
+}
+
+enum ReminderWindow {
+  FOUR_HOURS
+  TWELVE_HOURS
+  TWENTY_FOUR_HOURS
+  FORTY_EIGHT_HOURS
+}
+
+enum ProfileVisibility {
+  PRIVATE
+  SHARED_WITH_INSTITUTIONS
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  passwordHash   String
+  firstName      String
+  lastName       String
+  phone          String?
+  school         String?
+  course         String?
+  level          String?
+  location       String?
+  bio            String?
+  role           UserRole        @default(STUDENT)
+  adminRequestStatus AdminRequestStatus @default(NONE)
+  adminRequestRequestedAt DateTime?
+  adminRequestReviewedAt DateTime?
+  adminRequestReviewedById String?
+  adminRequestNotes String?
+  isActive       Boolean         @default(true)
+  lastLoginAt    DateTime?
+  passwordUpdatedAt DateTime     @default(now())
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  attempts       ExamAttempt[]
+  createdExams   Exam[]          @relation("ExamCreatedBy")
+  sessions       UserSession[]
+  aiArtifacts    AIArtifact[]
+  certificates   Certificate[]
+  settings       UserSettings?
+}
+
+model UserSession {
+  id             String          @id @default(cuid())
+  userId         String
+  refreshToken   String
+  ipAddress      String?
+  deviceId       String?
+  userAgent      String?
+  expiresAt      DateTime
+  createdAt      DateTime        @default(now())
+  revokedAt      DateTime?
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Exam {
+  id                   String          @id @default(cuid())
+  title                String
+  slug                 String          @unique
+  description          String?
+  instructions         String?
+  mode                 ExamMode        @default(REAL)
+  status               ExamStatus      @default(DRAFT)
+  durationInMinutes    Int
+  totalMarks           Int             @default(0)
+  passingMarks         Int
+  shuffleQuestions     Boolean         @default(false)
+  shuffleOptions       Boolean         @default(false)
+  fullscreenRequired   Boolean         @default(true)
+  webcamRequired       Boolean         @default(true)
+  tabSwitchLimit       Int             @default(2)
+  startAt              DateTime?
+  endAt                DateTime?
+  createdById          String
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  createdBy            User            @relation("ExamCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  questions            Question[]
+  attempts             ExamAttempt[]
+  certificates         Certificate[]
+
+  @@index([status, mode])
+  @@index([startAt, endAt])
+}
+
+model Question {
+  id                   String             @id @default(cuid())
+  examId               String
+  type                 QuestionType
+  prompt               String
+  explanation          String?
+  marks                Int                @default(1)
+  orderIndex           Int
+  difficulty           String?
+  metadata             Json?
+  rubric               Json?
+  correctAnswer        Json?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  exam                 Exam               @relation(fields: [examId], references: [id], onDelete: Cascade)
+  options              QuestionOption[]
+  responses            AttemptResponse[]
+
+  @@index([examId, orderIndex])
+}
+
+model QuestionOption {
+  id                   String             @id @default(cuid())
+  questionId           String
+  label                String
+  value                String
+  isCorrect            Boolean            @default(false)
+  orderIndex           Int
+  question             Question           @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId, orderIndex])
+}
+
+model ExamAttempt {
+  id                   String             @id @default(cuid())
+  examId               String
+  studentId            String
+  status               AttemptStatus      @default(NOT_STARTED)
+  startedAt            DateTime?
+  submittedAt          DateTime?
+  autoGradedAt         DateTime?
+  reviewedAt           DateTime?
+  score                Float?
+  maxScore             Float              @default(0)
+  percentage           Float?
+  tabSwitchCount       Int                @default(0)
+  fullscreenViolations Int                @default(0)
+  suspiciousFlags      Int                @default(0)
+  ipAddress            String?
+  deviceId             String?
+  userAgent            String?
+  gradingSummary       Json?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  exam                 Exam               @relation(fields: [examId], references: [id], onDelete: Restrict)
+  student              User               @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  responses            AttemptResponse[]
+  proctorEvents        ProctorEvent[]
+  certificate          Certificate?
+
+  @@unique([examId, studentId])
+  @@index([studentId, status])
+}
+
+model AttemptResponse {
+  id                   String             @id @default(cuid())
+  attemptId            String
+  questionId           String
+  answer               Json?
+  awardedMarks         Float?
+  autoFeedback         String?
+  submittedAt          DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  attempt              ExamAttempt        @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question             Question           @relation(fields: [questionId], references: [id], onDelete: Restrict)
+
+  @@unique([attemptId, questionId])
+}
+
+model ProctorEvent {
+  id                   String             @id @default(cuid())
+  attemptId            String
+  type                 ProctorEventType
+  severity             Int                @default(1)
+  payload              Json?
+  createdAt            DateTime           @default(now())
+  attempt              ExamAttempt        @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId, type, createdAt])
+}
+
+model AIArtifact {
+  id                   String             @id @default(cuid())
+  userId               String
+  type                 AIArtifactType
+  topic                String?
+  prompt               String
+  response             Json
+  createdAt            DateTime           @default(now())
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, createdAt])
+}
+
+model UserSettings {
+  id                          String              @id @default(cuid())
+  userId                      String              @unique
+  themePreference             ThemePreference     @default(SYSTEM)
+  dashboardDensity            DashboardDensity    @default(COMFORTABLE)
+  reminderWindow              ReminderWindow      @default(TWENTY_FOUR_HOURS)
+  studyGoal                   String              @default("")
+  notificationAssessmentReminders Boolean         @default(true)
+  notificationPracticeNudges  Boolean             @default(true)
+  notificationResultAlerts    Boolean             @default(true)
+  notificationCareerInsights  Boolean             @default(false)
+  profileVisibility           ProfileVisibility   @default(PRIVATE)
+  certificateSharingEnabled   Boolean             @default(false)
+  createdAt                   DateTime            @default(now())
+  updatedAt                   DateTime            @updatedAt
+  user                        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Certificate {
+  id                   String             @id @default(cuid())
+  examId               String
+  attemptId            String             @unique
+  studentId            String
+  certificateNumber    String             @unique
+  issuedAt             DateTime           @default(now())
+  verificationHash     String             @unique
+  metadata             Json?
+  exam                 Exam               @relation(fields: [examId], references: [id], onDelete: Restrict)
+  attempt              ExamAttempt        @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  student              User               @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@index([studentId, issuedAt])
+}

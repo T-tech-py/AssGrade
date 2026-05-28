@@ -1,0 +1,13 @@
+node_modules
+dist
+.DS_Store
+.env
+coverage
+backend/node_modules
+backend/dist
+backend/.env
+frontend/.env.local
+deploy.env
+backend/.env.production
+frontend/.env.production
+.next

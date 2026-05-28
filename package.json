@@ -1,0 +1,20 @@
+{
+  "name": "ai-exam-platform",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev --workspace frontend",
+    "dev:backend": "npm run start:dev --workspace backend",
+    "build": "npm run build --workspace frontend && npm run build --workspace backend",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:push": "npm run prisma:generate --workspace backend && npm run prisma:push --workspace backend",
+    "db:seed": "npm run prisma:seed --workspace backend",
+    "bootstrap": "npm install && npm run db:up && npm run db:push",
+    "lint": "npm run lint --workspace frontend && npm run lint --workspace backend"
+  }
+}
